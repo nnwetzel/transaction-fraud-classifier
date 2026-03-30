@@ -1,0 +1,3 @@
+OUTPUT_DIR = "outputs"
+RANDOM_STATE = 42
+TEST_SIZE = 0.2
