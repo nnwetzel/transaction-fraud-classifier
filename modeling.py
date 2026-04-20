@@ -55,10 +55,12 @@ def preprocess(df, feature_cols, label_encoders=None, scalers=None, fit=True):
     """Return feature matrix plus fitted/loaded encoders and scalers."""
     data = df[feature_cols].copy()
 
+    # 1. Fill missing temporal nulls (first transaction per card has no history)
     for col in TEMPORAL_CONTINUOUS_COLS:
         if col in data.columns:
             data[col] = data[col].fillna(0)
 
+    # 2. Encode string categories into integers using LabelEncoder
     cats_in_scope = [c for c in CATEGORICAL_COLS if c in feature_cols]
     if fit:
         label_encoders = {}
@@ -77,6 +79,7 @@ def preprocess(df, feature_cols, label_encoders=None, scalers=None, fit=True):
                 )
             )
 
+    # 3. Standardize continuous features (Z-score normalization)
     cont_in_scope = [
         c for c in (CONTINUOUS_COLS + TEMPORAL_CONTINUOUS_COLS) if c in feature_cols
     ]
@@ -189,7 +192,7 @@ def plot_roc_curves(roc_data, feature_set_name):
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     fig.savefig(os.path.join(OUTPUT_DIR, f"roc_{safe_fs}.png"), dpi=150)
     plt.close(fig)
-    print(f"Saved ROC curve → {OUTPUT_DIR}/roc_{safe_fs}.png")
+    print(f"Saved ROC curve -> {OUTPUT_DIR}/roc_{safe_fs}.png")
 
 
 def plot_metric_comparison(results_raw, results_temporal):
@@ -216,7 +219,7 @@ def plot_metric_comparison(results_raw, results_temporal):
         os.makedirs(OUTPUT_DIR, exist_ok=True)
         fig.savefig(os.path.join(OUTPUT_DIR, f"comparison_{metric}.png"), dpi=150)
         plt.close(fig)
-        print(f"Saved comparison chart → {OUTPUT_DIR}/comparison_{metric}.png")
+        print(f"Saved comparison chart -> {OUTPUT_DIR}/comparison_{metric}.png")
 
 
 def run_pipeline(df, feature_cols, feature_set_name):

@@ -46,9 +46,12 @@ def load_data(train_path="fraudTrain.csv", test_path="fraudTest.csv"):
 def explore_data(df):
     """Print basic stats and save class-balance bar chart."""
     import matplotlib.pyplot as plt
-    import seaborn as sns  # noqa: F401  # kept for potential future use
 
-    print("\n--- EDA ---")
+    # 1. Print class distribution and summary statistics
+    print("\n--- Basic Exploratory Data Analysis ---")
+    class_counts = df["is_fraud"].value_counts()
+    print("Class Dist:\n", class_counts)
+
     print(df.dtypes)
     print(df.describe(include="all").T)
 
@@ -56,6 +59,7 @@ def explore_data(df):
     fraud_pct = df["is_fraud"].mean() * 100
     print(f"\nClass balance: {fraud_counts.to_dict()}  (fraud = {fraud_pct:.2f}%)")
 
+    # 2. Plot the baseline ratio of legitimate to fraudulent transactions
     fig, ax = plt.subplots(figsize=(5, 4))
     ax.bar(["Legitimate", "Fraudulent"], fraud_counts.values, color=["steelblue", "salmon"])
     ax.set_title("Class Balance")
@@ -66,8 +70,9 @@ def explore_data(df):
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     fig.savefig(os.path.join(OUTPUT_DIR, "class_balance.png"), dpi=150)
     plt.close(fig)
-    print(f"Saved class balance chart → {OUTPUT_DIR}/class_balance.png")
+    print(f"Saved class balance chart -> {OUTPUT_DIR}/class_balance.png")
 
+    # 3. Plot the transaction amount distribution between classes (capped at $1000 for visibility)
     fig2, ax2 = plt.subplots(figsize=(6, 4))
     legit_amt = df[df["is_fraud"] == 0]["amt"]
     fraud_amt = df[df["is_fraud"] == 1]["amt"]
@@ -81,7 +86,7 @@ def explore_data(df):
     fig2.tight_layout()
     fig2.savefig(os.path.join(OUTPUT_DIR, "amount_distribution.png"), dpi=150)
     plt.close(fig2)
-    print(f"Saved amount distribution chart → {OUTPUT_DIR}/amount_distribution.png")
+    print(f"Saved amount distribution chart -> {OUTPUT_DIR}/amount_distribution.png")
 
 
 def engineer_temporal_features(df):
@@ -89,20 +94,23 @@ def engineer_temporal_features(df):
     print("\nEngineering temporal features ...")
 
     df = df.copy()
+    
+    # 1. Parse dates and sort chronologically to simulate a real-world continuous stream
     df["trans_date_trans_time"] = pd.to_datetime(df["trans_date_trans_time"])
-
     df = df.sort_values("trans_date_trans_time").reset_index(drop=True)
 
+    # 2. Extract explicit time components
     df["trans_hour"] = df["trans_date_trans_time"].dt.hour
     df["trans_dayofweek"] = df["trans_date_trans_time"].dt.dayofweek
     df["trans_month"] = df["trans_date_trans_time"].dt.month
 
+    # 3. Calculate 'velocity' metrics: seconds elapsed since the last transaction for each card
     ts_seconds = df["trans_date_trans_time"].astype(np.int64) // 10**9
-
     df["time_since_last_tx"] = (
         ts_seconds - ts_seconds.groupby(df["cc_num"]).shift(1)
     )
 
+    # Helper functions using closed="left" to prevent data leakage (exclude current row from rolling metrics)
     def _rolling_count(group, window_str):
         group = group.sort_index()
         return (
@@ -121,6 +129,7 @@ def engineer_temporal_features(df):
 
     dt_index = df.set_index("trans_date_trans_time")
 
+    # 4. Calculate rolling historic parameters
     rolling_1h = (
         dt_index.groupby("cc_num")["amt"]
         .transform(lambda g: _rolling_count(g, "1h"))
