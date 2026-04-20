@@ -68,6 +68,21 @@ def explore_data(df):
     plt.close(fig)
     print(f"Saved class balance chart → {OUTPUT_DIR}/class_balance.png")
 
+    fig2, ax2 = plt.subplots(figsize=(6, 4))
+    legit_amt = df[df["is_fraud"] == 0]["amt"]
+    fraud_amt = df[df["is_fraud"] == 1]["amt"]
+    
+    ax2.hist(legit_amt[legit_amt < 1000], bins=50, alpha=0.5, label='Legitimate (<=1000)', density=True, color='steelblue')
+    ax2.hist(fraud_amt[fraud_amt < 1000], bins=50, alpha=0.5, label='Fraudulent (<=1000)', density=True, color='salmon')
+    ax2.set_title("Transaction Amount Distribution")
+    ax2.set_xlabel("Amount ($)")
+    ax2.set_ylabel("Density")
+    ax2.legend()
+    fig2.tight_layout()
+    fig2.savefig(os.path.join(OUTPUT_DIR, "amount_distribution.png"), dpi=150)
+    plt.close(fig2)
+    print(f"Saved amount distribution chart → {OUTPUT_DIR}/amount_distribution.png")
+
 
 def engineer_temporal_features(df):
     """Add temporal behavior features per card in a leakage-safe way."""
