@@ -13,6 +13,7 @@ from sklearn.metrics import (
     recall_score,
     roc_auc_score,
     roc_curve,
+    accuracy_score,
 )
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
@@ -96,6 +97,7 @@ def preprocess(df, feature_cols, label_encoders=None, scalers=None, fit=True):
 
 def get_models():
     """Return mapping of model name to unfitted estimator."""
+    from sklearn.neural_network import MLPClassifier
     return {
         "Logistic Regression": LogisticRegression(
             max_iter=2000,
@@ -122,6 +124,14 @@ def get_models():
             random_state=RANDOM_STATE,
             n_jobs=-1,
         ),
+        "Neural Network (MLP)": MLPClassifier(
+            hidden_layer_sizes=(64, 32),
+            activation="relu",
+            solver="adam",
+            max_iter=500,
+            random_state=RANDOM_STATE,
+            early_stopping=True,
+        ),
     }
 
 
@@ -135,6 +145,7 @@ def evaluate(model, X_test, y_test, model_name, feature_set_name):
     )
 
     metrics = {
+        "accuracy": accuracy_score(y_test, y_pred),
         "precision": precision_score(y_test, y_pred, zero_division=0),
         "recall": recall_score(y_test, y_pred, zero_division=0),
         "f1": f1_score(y_test, y_pred, zero_division=0),
@@ -142,7 +153,7 @@ def evaluate(model, X_test, y_test, model_name, feature_set_name):
     }
 
     print(f"\n  [{feature_set_name}] {model_name}")
-    print(f"  Precision={metrics['precision']:.4f}  Recall={metrics['recall']:.4f}"
+    print(f"  Accuracy={metrics['accuracy']:.4f}  Precision={metrics['precision']:.4f}  Recall={metrics['recall']:.4f}"
           f"  F1={metrics['f1']:.4f}  ROC-AUC={metrics['roc_auc']:.4f}")
     print(classification_report(y_test, y_pred, target_names=["Legitimate", "Fraud"],
                                 zero_division=0))
@@ -242,8 +253,6 @@ def run_pipeline(df, feature_cols, feature_set_name):
     for model_name, model in models.items():
         print(f"\nTraining {model_name} ...")
 
-        # Suppress numerical RuntimeWarnings during optimization for cleaner logs,
-        # while still allowing other warning types (e.g., ConvergenceWarning).
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=RuntimeWarning)
             model.fit(X_train, y_train)
